@@ -8,6 +8,7 @@
 #include "afxdialogex.h"
 #include<odbcinst.h> 
 #include<afxdb.h>
+#include "workthread.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -106,8 +107,14 @@ char path_buffer[_MAX_PATH];
 
 	GetCurrentDirectory(_MAX_PATH,mDesFile);
 
-	strcat_s(mDesFile,"\\desFile.csv");
+	mFile[0] = '\0';
+	mFileMes[0] = '\0';
 
+	strcat_s(mFile,mDesFile);
+	strcat_s(mFileMes,mDesFile);
+	strcat_s(mDesFile,"\\怪兽充电出货SN&MAC对应表.csv");
+	strcat_s(mFile,"\\all_keywords.csv");
+	strcat_s(mFileMes,"\\导出.xsl.xls");
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -245,7 +252,31 @@ CString CprocessfileDlg::GetCellString(long irow, long icolumn)
     return str;  
 }  
 #endif
-char headFlag = 0;
+ #define xlComments COleVariant( -4144L )
+   #define xlFormulas COleVariant( -4123L ) // will find value in any cell
+   #define xlValues COleVariant( -4163L ) // ignores hidden cells
+
+   //LookAt
+   #define xlWhole COleVariant( 1L ) // whole word search
+   #define xlPart COleVariant( 2L ) // partial word search
+
+   //SearchOrder (vOpt works here)
+   #define xlByRows COleVariant( 1L )
+   #define xlByColumns COleVariant( 2L )
+
+   //SearchDirection (required but usually has no effect)
+   #define xlNext 1L
+   #define xlPrev 2L
+
+   // MatchCase
+   #define xlMatchCase COleVariant( 1L )
+   #define xlIgnoreCase COleVariant( 0L )
+
+   // MatchByte
+   // ignored, use vOpt
+
+   _variant_t vOpt(DISP_E_PARAMNOTFOUND, VT_ERROR);
+char headFlag = 0,index=0;
 BOOL CprocessfileDlg::mOperate()
 {
 //导入
@@ -263,15 +294,19 @@ BOOL CprocessfileDlg::mOperate()
     books = app.get_Workbooks();
 	booksMes= appMes.get_Workbooks();
     //打开Excel，其中pathname为Excel表的路径名  
-    lpDispMes = booksMes.Open(_T("F:\\work\\processfile\\processfile\\Debug\\导出MES 原始档.xsl.xls"),covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
-    bookMes.AttachDispatch(lpDispMes); 
+ //   lpDispMes = booksMes.Open(_T("F:\\work\\processfile\\processfile\\Debug\\导出MES 原始档.xsl.xls"),covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
+	lpDispMes = booksMes.Open(mFileMes,covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
+	bookMes.AttachDispatch(lpDispMes); 
 
-	lpDisp = books.Open(_T("F:\\work\\processfile\\processfile\\Debug\\all_keywords1207.csv"),covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
-    book.AttachDispatch(lpDisp);
+	//lpDisp = books.Open(_T("F:\\work\\processfile\\processfile\\Debug\\all_keywords1207.csv"),covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
+    lpDisp = books.Open(mFile,covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
+	book.AttachDispatch(lpDisp);
 
 
     sheets = book.get_Worksheets(); 
     sheet = sheets.get_Item(COleVariant((short)1));
+	rangeFind.AttachDispatch(sheet.get_Cells());
+	rangeRow = sheet.get_Range(COleVariant(_T("C1")) ,COleVariant(_T("C1000")));
 
 	sheetsMes = bookMes.get_Worksheets(); 
     sheetMes = sheetsMes.get_Item(COleVariant((short)1));
@@ -279,8 +314,9 @@ BOOL CprocessfileDlg::mOperate()
     //获得坐标为（A，1）的单元格 
     //range = sheet.get_Range(COleVariant(_T("A1")) ,COleVariant(_T("A1")));  
 
-	long rows,rowsMes;
-	long temp,tempMes,tempW;
+	long rows,rowsMes,tRowF=1,tRowE=5000;
+	long temp,tempMes,tempW,tempFile = 0;
+	long mRow,mCol;
 	CString str,strMes,strWrite,strTemp;
      COleVariant vResult;
 	 CStdioFile file;
@@ -290,11 +326,41 @@ BOOL CprocessfileDlg::mOperate()
 	range = range.get_Rows();
 	rows = range.get_Count();
 
+
 	rangeMes = sheetMes.get_UsedRange();  
 	tRangeMes = rangeMes;
 	rangeMes = rangeMes.get_Rows();
 	rowsMes = rangeMes.get_Count();
 
+
+	char tt[10],te[10];
+	
+	sprintf(tt,"C%d",rows);
+	
+
+	rangeRow = sheet.get_Range(COleVariant(_T("C1")) ,COleVariant(tt));
+
+#if 0
+
+	while(rowsMes > 5000)
+	{
+		memset(tt,10,'\0');
+		memset(te,10,'\0');
+		sprintf(tt,"A%d",tRowF);
+		sprintf(te,"F%d",tRowE);
+		m_info[index].RangeMes = sheetMes.get_Range(COleVariant(tt) ,COleVariant(te));
+		m_info[index].RangeRow = rangeRow;
+		m_info[index].RangeFind = rangeFind;
+		m_info[index].tRange = tRange;
+		m_info[index].cnt = 5000;
+		tRowF +=5000;
+		tRowE +=5000;
+		rows-=5000;
+		m_info[index].pThread = AfxBeginThread((AFX_THREADPROC)operateChild, &(m_info[index]),THREAD_PRIORITY_NORMAL,0,0,NULL);
+		index++;
+	}
+
+#endif
 	file.Open(mDesFile,CFile::modeCreate | CFile::modeNoTruncate | CFile::modeWrite);
 
 	if(file == NULL)
@@ -303,59 +369,230 @@ BOOL CprocessfileDlg::mOperate()
 	file.SeekToEnd();
 	if(headFlag == 0)
 	{
-		file.WriteString("箱唛,盒号,CID,SN\n");
+		file.WriteString("箱唛,盒号,CID,扫描时间,SN\n");
 		headFlag = 1;
 	}
+	strWrite = _T("");
 	for(tempMes = 2; tempMes <= rowsMes;tempMes++)
-	{
-		rangeMes.AttachDispatch(tRangeMes.get_Item (COleVariant((long)tempMes),COleVariant((long)3)).pdispVal, true);
-		vResult =rangeMes.get_Value2();  
-		strMes=vResult.bstrVal;  
-		
-		for(temp = 2; temp <= rows; temp++)
+	{		
+		for(tempW = 1;tempW <=5; tempW++)
 		{
-			range.AttachDispatch(tRange.get_Item (COleVariant((long)temp),COleVariant((long)3)).pdispVal, true);
-			vResult =range.get_Value2();  
-			str=vResult.bstrVal;  
-			if(str == strMes)
+			if(tempW == 4)
+				continue;
+			if(tempW != 1)
+				strWrite += _T(",");
+			rangeMes.AttachDispatch(tRangeMes.get_Item (COleVariant((long)tempMes),COleVariant((long)tempW)).pdispVal, true);
+			vResult =rangeMes.get_Value2();  
+			strTemp=vResult.bstrVal;
+			strWrite += strTemp; 
+			if(tempW ==3)
 			{
-				strWrite = _T("");
-				for(tempW = 1;tempW < 3; tempW++)
-				{
-					if(tempW != 1)
-						strWrite += _T(",");
-					rangeMes.AttachDispatch(tRangeMes.get_Item (COleVariant((long)tempMes),COleVariant((long)tempW)).pdispVal, true);
-					vResult =rangeMes.get_Value2();  
-					strTemp=vResult.bstrVal;
-					strWrite += strTemp; 
-				}
+				strMes = strTemp;	
+			}
+		}
+
+
+
+		lpDispFind = rangeRow.Find(COleVariant(strMes), vOpt, xlValues, xlPart,xlByColumns, xlNext, xlIgnoreCase, vOpt,vOpt);
+			if(lpDispFind)
+			{
+				CRange rTemp;
+				rTemp = rangeFind;
+				rTemp.AttachDispatch(lpDispFind);
+				rTemp.Select();
+				rTemp.Activate();
+				mRow = rTemp.get_Row();
+				mCol = rTemp.get_Column();
 				strWrite += _T(",");
-				strWrite += str;
-				strWrite += _T(",");
-				range.AttachDispatch(tRange.get_Item (COleVariant((long)temp),COleVariant((long)4)).pdispVal, true);
+				range.AttachDispatch(tRange.get_Item (COleVariant((long)mRow),COleVariant((long)(mCol+1))).pdispVal, true);
 				vResult =range.get_Value2();  
 				str=vResult.bstrVal;  
 				strWrite += str;
-
-				strWrite += _T("\n");
-				file.SeekToEnd();
-		if(headFlag == 0)
-		{
-			file.WriteString("箱唛,盒号,CID,SN\n");
-			headFlag = 1;
-		}
-				file.WriteString(strWrite);
-				break;
 			}
+			strWrite += _T("\n");
+
+			if(tempFile++ > 50)
+			{
+				tempFile = 0;
+				file.WriteString(strWrite);
+				strWrite = _T("");
+			}
+	}
+	if(tempFile > 0)
+	{
+		file.WriteString(strWrite);
+	}
+	AfxMessageBox("生成完毕");
+	file.Close();
+	 
+	tRange.ReleaseDispatch();
+	rangeMes.ReleaseDispatch();
+	rangeFind.ReleaseDispatch();
+	sheet.ReleaseDispatch();
+	sheetMes.ReleaseDispatch();
+	book.ReleaseDispatch();
+	bookMes.ReleaseDispatch();
+
+    app.Quit();
+	appMes.Quit();
+	app.ReleaseDispatch();
+	appMes.ReleaseDispatch();
+	return TRUE;
+}
+
+
+
+
+void CprocessfileDlg::mFindCidSN()
+{
+	char path_buffer[_MAX_PATH];
+	CString filenames[1024],path;
+	CFileFind finder;
+	int count =0;
+	BOOL working;
+
+
+
+	//获取当前路径
+	GetCurrentDirectory(_MAX_PATH,path_buffer);
+
+	path = (CString)path_buffer;
+	working = finder.FindFile(path + "\\*.txt");
+
+	while (working)
+	{
+		working = finder.FindNextFile();
+		if (finder.IsDots())
+			continue;
+		if (finder.IsDirectory())
+		{
+			//FindAllFile(finder.GetFilePath(), filenames, count);
+		} 
+		else 
+		{
+			CString filename = finder.GetFileName();
+			filenames[count++] = filename;
 		}
 	}
 
-	file.Close();
-	 
-    app.Quit();
-	appMes.Quit();
-	return TRUE;
+
+	CStdioFile file,csvFile;
+	CString readContnent;
+	CString readBuffer[3];
+	int posBuffer[3];
+	const char *pos;
+	char *fuck;
+	char headFlag = 0;
+	int totalNum = 0,tempNum =0,tempPos,statusFlag = 0xFF;
+	// info file 
+		/*		ch =  (LPCTSTR)mLogSavePath;
+				len = mLogSavePath.GetLength();
+
+				strncpy(mInfoPath,ch,len);
+				*/
+#if 0
+	FILE *fp;
+
+					  fopen_s(&fp,"result.txt","w");
+				   if(fp ==NULL)
+				   {
+					   AfxMessageBox("save fail");
+				   }
+#endif
+	csvFile.Open("result.csv",CFile::modeCreate | CFile::modeNoTruncate | CFile::modeWrite);
+	while(count)
+	{
+		count--;
+		pos = (LPCTSTR)filenames[count];
+		if(strncmp(pos,"result.txt",10) == 0)
+			continue;
+		 if(file.Open(pos,CStdioFile::modeRead)==false)
+       { 
+#if 0
+		   fclose(fp);
+#endif
+		   csvFile.Close();
+            AfxMessageBox("打开文件失败");
+       }
+	
+		// fprintf(fp,pos);
+		 //fprintf(fp,"\r\n");
+		 statusFlag = 0xFF;
+
+		 while(file.ReadString(readContnent))//获取文件的长度，到文件末尾时返回false；
+       {
+		   tempPos = readContnent.Find("Cid = ");
+		   if(tempPos >= 0)
+		   {
+			    statusFlag =0;
+				readBuffer[statusFlag] = readContnent.Mid(tempPos+6,9);
+		   }
+		   tempPos = readContnent.Find("id=");
+		   if(tempPos >= 0)
+		   {
+			   if(statusFlag != 0)
+			   {
+				   statusFlag = 0xFF;
+			   }
+			   else
+			   {
+				   statusFlag = 1;
+				   readBuffer[statusFlag] = readContnent.Mid(tempPos+3,32);
+			   }
+		   }
+		    tempPos = readContnent.Find("clear ok");
+		   if(tempPos >= 0)
+		   {
+			   if(statusFlag != 1)
+			   {
+				   statusFlag = 0xFF;
+			   }
+			   else
+			   {
+				   statusFlag = 2;
+				   statusFlag = 0xFF;
+				   //save
+					#if 0
+				   pos = (LPCTSTR)readBuffer[0];
+				   strncpy_s(path_buffer,pos,9);
+				    pos = (LPCTSTR)readBuffer[1];
+					strncpy(path_buffer+10,pos,32);
+
+				   path_buffer[9] = ' ';
+				   path_buffer[42] = '\0';
+
+				   fprintf(fp,path_buffer);
+				   fprintf(fp,"\n");
+				#endif
+				   totalNum++;
+				   if(totalNum >=540)
+					   totalNum++;
+				   if(headFlag == 0)
+				   {
+					   csvFile.WriteString("CID,SN\n");
+					   headFlag = 1;
+				   }
+				   csvFile.WriteString(readBuffer[0]+_T(",")+readBuffer[1]+_T("\n"));
+			   }
+		   }
+       }
+
+		 file.Close();
+	}
+
+	//AfxMessageBox("生成完毕");
+	MessageBox("生成完毕","",MB_OK);
+#if 0
+	fclose(fp);
+#endif
+	csvFile.Close();
 }
+
+void CprocessfileDlg::OnCancel()
+{
+		 PostMessage(WM_QUIT,0,0);//最常用
+}
+
 void CprocessfileDlg::OnBnClickedButton1()
 {
 	// TODO: 在此添加控件通知处理程序代码
@@ -367,9 +604,12 @@ void CprocessfileDlg::OnBnClickedButton1()
 	  CString opFileKeyWord;
 
 	  GetDlgItem(IDC_BUTTON1)->EnableWindow(FALSE);
-
+		
+	  //mFindCidSN();
 	  mOperate();
 	  GetDlgItem(IDC_BUTTON1)->EnableWindow(TRUE);
+
+
 #if 0
 	  sFileMes = _T("导出MES 原始档.xsl.xls"); 
 	  sFileKeyWord = _T("all_keywords1207.csv");
