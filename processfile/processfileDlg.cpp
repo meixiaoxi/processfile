@@ -112,9 +112,9 @@ char path_buffer[_MAX_PATH];
 
 	strcat_s(mFile,mDesFile);
 	strcat_s(mFileMes,mDesFile);
-	strcat_s(mDesFile,"\\怪兽充电出货SN&MAC对应表.csv");
-	strcat_s(mFile,"\\all_keywords.csv");
-	strcat_s(mFileMes,"\\导出.xsl.xls");
+	strcat_s(mDesFile,"\\合并.csv");
+	strcat_s(mFile,"\\result.csv");
+	strcat_s(mFileMes,"\\怪兽充电出货SN&MAC对应表.csv");
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -317,7 +317,7 @@ BOOL CprocessfileDlg::mOperate()
 	long rows,rowsMes,tRowF=1,tRowE=5000;
 	long temp,tempMes,tempW,tempFile = 0;
 	long mRow,mCol;
-	CString str,strMes,strWrite,strTemp;
+	CString str,strMes,strWrite,strTemp,strOneWrite,strScanTime;
      COleVariant vResult;
 	 CStdioFile file;
 	////获取sheet所使用的范围
@@ -335,10 +335,10 @@ BOOL CprocessfileDlg::mOperate()
 
 	char tt[10],te[10];
 	
-	sprintf(tt,"C%d",rows);
+	sprintf(tt,"B%d",rows);
 	
 
-	rangeRow = sheet.get_Range(COleVariant(_T("C1")) ,COleVariant(tt));
+	rangeRow = sheet.get_Range(COleVariant(_T("B1")) ,COleVariant(tt));
 
 #if 0
 
@@ -369,23 +369,34 @@ BOOL CprocessfileDlg::mOperate()
 	file.SeekToEnd();
 	if(headFlag == 0)
 	{
-		file.WriteString("箱唛,盒号,CID,扫描时间,SN\n");
+		file.WriteString("箱唛,盒号,CID,扫描时间,SN,旧CID\n");
 		headFlag = 1;
 	}
 	strWrite = _T("");
+	strOneWrite = _T("");
 	for(tempMes = 2; tempMes <= rowsMes;tempMes++)
 	{		
 		for(tempW = 1;tempW <=5; tempW++)
 		{
-			if(tempW == 4)
-				continue;
+			//if(tempW == 4)
+			//	continue;
 			if(tempW != 1)
 				strWrite += _T(",");
 			rangeMes.AttachDispatch(tRangeMes.get_Item (COleVariant((long)tempMes),COleVariant((long)tempW)).pdispVal, true);
-			vResult =rangeMes.get_Value2();  
-			strTemp=vResult.bstrVal;
-			strWrite += strTemp; 
-			if(tempW ==3)
+			vResult =rangeMes.get_Value2(); 
+
+			if(tempW != 4)
+			{
+				strTemp=vResult.bstrVal;
+				strWrite += strTemp; 
+			}
+			else
+			{
+				COleDateTime date(vResult.date);
+				strWrite +=date.Format("%Y/%m/%d %H:%M:%S");  
+			}
+
+			if(tempW ==5)
 			{
 				strMes = strTemp;	
 			}
@@ -404,23 +415,42 @@ BOOL CprocessfileDlg::mOperate()
 				mRow = rTemp.get_Row();
 				mCol = rTemp.get_Column();
 				strWrite += _T(",");
-				range.AttachDispatch(tRange.get_Item (COleVariant((long)mRow),COleVariant((long)(mCol+1))).pdispVal, true);
+				range.AttachDispatch(tRange.get_Item (COleVariant((long)mRow),COleVariant((long)(mCol-1))).pdispVal, true);
 				vResult =range.get_Value2();  
 				str=vResult.bstrVal;  
 				strWrite += str;
+/*
+				strWrite += _T(",");
+				range.AttachDispatch(tRange.get_Item (COleVariant((long)mRow),COleVariant((long)(mCol-1))).pdispVal, true);
+				vResult =range.get_Value2(); 
+				COleDateTime date(vResult.date);
+				str=date.Format("%Y/%m/%d %H:%M:%S");  
+				strWrite += str;
+*/
 			}
+		/*	else
+			{
+					strWrite = _T("");
+					continue;
+			}*/
+		//	strWrite += _T(",");
+		//	strWrite += strScanTime;
+
 			strWrite += _T("\n");
 
-			if(tempFile++ > 50)
+			strOneWrite +=strWrite;
+			strWrite = _T("");
+			if(tempFile++ > 5)
 			{
 				tempFile = 0;
-				file.WriteString(strWrite);
+				file.WriteString(strOneWrite);
 				strWrite = _T("");
+				strOneWrite = _T("");
 			}
 	}
 	if(tempFile > 0)
 	{
-		file.WriteString(strWrite);
+		file.WriteString(strOneWrite);
 	}
 	AfxMessageBox("生成完毕");
 	file.Close();
