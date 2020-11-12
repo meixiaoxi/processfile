@@ -128,7 +128,8 @@ BOOL CfindsnDlg::OnInitDialog()
 
 	strcat_s(snSrcFile,workPath);
 //	strcat_s(mFileMes,workPath);
-	strcat_s(snSrcFile,"\\source.xlsx");
+	strcat_s(snSrcFile,"\\数据源.xlsx");
+	PostMessage(WM_USER_NOTIFY,WP_START_EXCEL_APP,0);
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -252,8 +253,9 @@ BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
 
 BOOL CfindsnDlg::mOperate()
 {
+	  char buf[500];
+#if 0
   COleVariant covOptional((long)DISP_E_PARAMNOTFOUND,VT_ERROR); 
-   char buf[500];
 	if(m_info.isExcelAppCreate == 0)
    {
 	   SendMessage(WM_USER_NOTIFY,WP_START_EXCEL_APP,0);
@@ -314,7 +316,7 @@ BOOL CfindsnDlg::mOperate()
 	}
 
 	m_info.isExcelAppCreate = 1;
-
+#endif
 	if(m_info.isSaveFileCreate == 0)
 	{
 		CTime tm;
@@ -344,7 +346,6 @@ BOOL CfindsnDlg::mOperate()
 	}
 
 	m_info.isSaveFileCreate = 1;
-
 	SendMessage(WM_USER_NOTIFY,WP_START_TEST,0);
 
 	time_t ltime;
@@ -375,8 +376,75 @@ BOOL CfindsnDlg::mOperate()
 		MessageBox(_T("产品过保修期"),NULL, MB_ICONERROR);
 	}
 
-
+	return TRUE;
 	
+}
+
+UINT8 CfindsnDlg::startExcelApp()
+{
+	COleVariant covOptional((long)DISP_E_PARAMNOTFOUND,VT_ERROR); 
+   char buf[500];
+	if(m_info.isExcelAppCreate == 0)
+   {
+	   
+		 if (!app.CreateDispatch(_T("Excel.Application")))
+    {   
+        this->MessageBox(_T("无法创建Excel应用！")); 
+		return RET_EXCEL_START_APP_FAIL;  
+    }
+	   books = app.get_Workbooks();
+
+	try{
+	lpDisp = books.Open(snSrcFile,covOptional ,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional,covOptional);
+	ASSERT(lpDisp);
+	book.AttachDispatch(lpDisp); 
+	}
+	catch(CException *e)
+	{
+				book.ReleaseDispatch();
+
+
+    app.Quit();
+	
+	app.ReleaseDispatch();
+
+	SendMessage(WM_USER_NOTIFY,WP_FAIL_OPEN_SN_SOURCE_FILE,0);
+		//MessageBox(0,TEXT("Could not open workbork."), MB_OK | MB_ICONERROR);
+		return RET_EXCEL_START_OPEN_SOURCE_FILE_FAIL; 
+	}
+
+	sheets = book.get_Worksheets(); 
+    sheet = sheets.get_Item(COleVariant((short)1));
+		long rows,rowsMes,tRowF=1,tRowE=5000;
+	long temp,tempMes,tempW,tempFile = 0;
+	long mRow,mCol;
+	CString str,strMes,strWrite,strTemp;
+     COleVariant vResult;
+	 CStdioFile file;
+	////获取sheet所使用的范围
+	range = sheet.get_UsedRange();  
+	tRange = range;
+	range = range.get_Rows();
+	rows = range.get_Count();
+
+
+	range = sheet.get_UsedRange();  
+	tRange = range;
+	range = range.get_Rows();
+	rowsMes = range.get_Count();
+
+
+	char tt[10],te[10];
+	
+	sprintf(tt,"A%d",rows);
+	
+
+	rangeRow = sheet.get_Range(COleVariant(_T("A1")) ,COleVariant(tt));
+
+	}
+
+	m_info.isExcelAppCreate = 1;
+	return RET_EXCEL_START_APP_SUCCESS;
 }
 
 LRESULT CfindsnDlg::OnUserMsg(WPARAM wParam, LPARAM lParam) 
@@ -431,8 +499,34 @@ LRESULT CfindsnDlg::OnUserMsg(WPARAM wParam, LPARAM lParam)
 	#endif
 		break;
 		case WP_START_EXCEL_APP:
+			UINT8 ret;
 			m_strRedit = "正在启动Excel APP...";
 			m_ctrlRedit.SetBackgroundColor(FALSE, COLOR_YELLOW);
+			UpdateData(FALSE);
+			ret = startExcelApp();
+			if(ret == RET_EXCEL_START_APP_FAIL)
+			{
+				m_strRedit = "启动Excel App失败";
+				m_ctrlRedit.SetBackgroundColor(FALSE, COLOR_RED);
+				UpdateData(FALSE);
+				MessageBox(_T("启动失败"),NULL, MB_ICONERROR);
+				exit(0);
+			}
+			else if(ret == RET_EXCEL_START_OPEN_SOURCE_FILE_FAIL)
+			{
+				m_strRedit = "打开数据源文件失败";
+				m_ctrlRedit.SetBackgroundColor(FALSE, COLOR_RED);
+				UpdateData(FALSE);
+				 app.Quit();
+				app.ReleaseDispatch();
+				MessageBox(_T("启动失败"),NULL, MB_ICONERROR);
+				exit(0);
+			}
+			else
+			{
+				m_strRedit = "";
+				m_ctrlRedit.SetBackgroundColor(FALSE, COLOR_WHITE);
+			}
 			UpdateData(FALSE);
 			break;
 	}

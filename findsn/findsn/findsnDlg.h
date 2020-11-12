@@ -18,9 +18,15 @@
 #define COLOR_GREEN		RGB(0, 255 ,0)
 #define COLOR_WHITE		RGB(0, 0, 0)
 #define COLOR_YELLOW	RGB(255, 255, 0)
+#define COLOR_WHITE		RGB(255, 255, 255)
 
 #define SAVE_INFO_PASS_FILE '1'
 #define SAVE_INFO_FAIL_FILE	  '2'
+
+#define RET_EXCEL_START_APP_SUCCESS				0
+#define RET_EXCEL_START_APP_FAIL				1
+#define RET_EXCEL_START_OPEN_SOURCE_FILE_FAIL	2
+
 // CfindsnDlg 对话框
 class CfindsnDlg : public CDialogEx
 {
@@ -29,6 +35,7 @@ public:
 	CfindsnDlg(CWnd* pParent = NULL);	// 标准构造函数
 	afx_msg LRESULT OnUserMsg(WPARAM wParam, LPARAM lParam);
 	virtual BOOL PreTranslateMessage(MSG* pMsg);
+	UINT8 startExcelApp();
 
 	CString m_strEdit1;
 	CEdit m_ctlEdit1;
