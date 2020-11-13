@@ -63,10 +63,14 @@ void CfindsnDlg::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Control(pDX, IDC_EDIT1, m_ctlEdit1);
 	DDX_Control(pDX, IDC_EDIT2, m_ctlEdit2);
+	DDX_Control(pDX, IDC_STATIC_pass_num, m_ctlStaticPass);
+	DDX_Control(pDX, IDC_STATIC_fail_num, m_ctlStaticFail);
 
 	DDX_Text(pDX, IDC_EDIT1, m_strEdit1);
 	DDX_Text(pDX, IDC_EDIT2, m_strEdit2);
 	DDX_Text(pDX,IDC_RICHEDIT22, m_strRedit);
+	DDX_Text(pDX,IDC_STATIC_pass_num, m_strStaticPass);
+	DDX_Text(pDX,IDC_STATIC_fail_num, m_strStaticFail);
 }
 
 BEGIN_MESSAGE_MAP(CfindsnDlg, CDialogEx)
@@ -76,6 +80,7 @@ BEGIN_MESSAGE_MAP(CfindsnDlg, CDialogEx)
 	ON_MESSAGE(WM_USER_NOTIFY,OnUserMsg)
 	ON_BN_CLICKED(IDOK, &CfindsnDlg::OnBnClickedOk)
 	//ON_WM_SIZE()
+	ON_BN_CLICKED(IDC_BUTTON1, &CfindsnDlg::OnBnClickedButton1)
 END_MESSAGE_MAP()
 
 
@@ -130,6 +135,15 @@ BOOL CfindsnDlg::OnInitDialog()
 //	strcat_s(mFileMes,workPath);
 	strcat_s(snSrcFile,"\\数据源.xlsx");
 	PostMessage(WM_USER_NOTIFY,WP_START_EXCEL_APP,0);
+
+	char buf_pass[20],buf_fail[20];
+	mPassNum = 0;
+	mFailNum = 0;
+
+	sprintf(buf_pass,"%d",mPassNum);
+	sprintf(buf_fail,"%d",mFailNum);
+	m_strStaticPass = buf_pass;
+	m_strStaticFail = buf_fail;
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -451,7 +465,7 @@ LRESULT CfindsnDlg::OnUserMsg(WPARAM wParam, LPARAM lParam)
 {
 	CString strText;
 	char tmpBuf[512];
-
+	char buf_t[20];
 	switch (wParam)
 	{
 		case WP_START_TEST:
@@ -475,10 +489,18 @@ LRESULT CfindsnDlg::OnUserMsg(WPARAM wParam, LPARAM lParam)
 			UpdateData(FALSE);
 			break;
 		case WP_SAVE_INFO_FILE_PASS:
+			mPassNum++;
+			sprintf(buf_t,"%d",mPassNum);
+			m_strStaticPass = buf_t;
 			CUtil::SaveInfoFile((char*)lParam,mSaveFilePassName);
+			UpdateData(FALSE);
 			break;
 		case WP_SAVE_INFO_FILE_FAIL:
+			mFailNum++;
+			sprintf(buf_t,"%d",mFailNum);
+			m_strStaticFail = buf_t;
 			CUtil::SaveInfoFile((char*)lParam,mSaveFileFailName);
+			UpdateData(FALSE);
 			break;
 		case WP_PRINT_LOG_STR:
 			// log 超过10k就取后5k
@@ -599,4 +621,18 @@ hwndChild=::GetWindow(hwndChild, GW_HWNDNEXT);
 }
 Old=Newp;
 
+}
+
+void CfindsnDlg::OnBnClickedButton1()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	char buf_t[20];
+
+	mPassNum = 0;
+	mFailNum = 0;
+	sprintf(buf_t,"%d",mFailNum);
+	m_strStaticFail = buf_t;
+	sprintf(buf_t,"%d",mPassNum);
+	m_strStaticPass = buf_t;
+	UpdateData(FALSE);
 }

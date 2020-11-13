@@ -41,9 +41,15 @@ public:
 	CEdit m_ctlEdit1;
 	CString m_strEdit2;
 	CEdit m_ctlEdit2;
+	CStatic m_ctlStaticPass;
+	CStatic m_ctlStaticFail;
 
 	CRichEditCtrl	m_ctrlRedit;
 	CString m_strRedit;
+	CString m_strStaticPass;
+	CString m_strStaticFail;
+	long mPassNum;
+	long mFailNum;
 // 对话框数据
 	enum { IDD = IDD_FINDSN_DIALOG };
 
@@ -86,4 +92,5 @@ public:
 	afx_msg void OnSize(UINT nType, int cx, int cy);
 	POINT	Old;
 	void	resize();
+	afx_msg void OnBnClickedButton1();
 };
