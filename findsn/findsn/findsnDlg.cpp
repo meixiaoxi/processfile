@@ -198,13 +198,18 @@ HCURSOR CfindsnDlg::OnQueryDragIcon()
 
 BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
 {
-	char strTemp[10];
+	char strTemp[30];
 	if (pMsg->message == WM_KEYDOWN && pMsg->wParam == VK_RETURN)
 	{
 			UpdateData();
+            #ifdef CHECK_SN_LENGTH
 			if (m_strEdit1.GetLength() == 9)
+			#else
+			if (m_strEdit1.GetLength() > 0)
+			#endif
 			{
 				strcpy(strTemp, (LPCSTR)(m_strEdit1));
+				 #ifdef CHECK_SN_LENGTH
 				if(strTemp[0] < 'A' || strTemp[0] > 'Z')
 				{
 					MessageBox("序列号首字母异常");
@@ -212,6 +217,7 @@ BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
 					UpdateData(FALSE);
 				}
 				else
+				#endif
 				{
 					strcpy(m_info.num, (LPCSTR)(m_strEdit1));
 					mOperate();
@@ -224,7 +230,11 @@ BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
 				#ifdef MANUAL_UNBIND_TEST
 				MessageBox("证书长度为32位");
 				#else
+ #ifdef CHECK_SN_LENGTH
 				MessageBox("Cid长度为9位");
+#else
+				MessageBox("数据为空");
+#endif
 				#endif
 				m_strEdit1 = "";
 				UpdateData(FALSE);
@@ -370,7 +380,7 @@ BOOL CfindsnDlg::mOperate()
 	SendMessage(WM_USER_NOTIFY,WP_PRINT_LOG_STR,(LPARAM)buf);
 	
 
-	lpDispFind = rangeRow.Find(COleVariant(m_info.num), vOpt, xlValues, xlPart,xlByColumns, xlNext, xlIgnoreCase, vOpt,vOpt);
+	lpDispFind = rangeRow.Find(COleVariant(m_info.num), vOpt, xlValues, xlWhole,xlByColumns, xlNext, xlIgnoreCase, vOpt,vOpt);
 
 	if(lpDispFind)
 	{

@@ -5,7 +5,7 @@ struct threadInfo
 {
 	HWND	hWnd;//主窗口句柄，用于消息的发送
 	CWinThread *pThread;
-	char	num[10];
+	char	num[20];
 	char	testid[33];
 	char    station;
 	char	workmode; // I2C or uart
