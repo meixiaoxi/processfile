@@ -205,7 +205,7 @@ BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
             #ifdef CHECK_SN_LENGTH
 			if (m_strEdit1.GetLength() == 9)
 			#else
-			if (m_strEdit1.GetLength() > 0)
+			if (m_strEdit1.GetLength() > 0  && m_strEdit1.GetLength() < 20)
 			#endif
 			{
 				strcpy(strTemp, (LPCSTR)(m_strEdit1));
@@ -233,7 +233,7 @@ BOOL CfindsnDlg::PreTranslateMessage(MSG* pMsg)
  #ifdef CHECK_SN_LENGTH
 				MessageBox("Cid长度为9位");
 #else
-				MessageBox("数据为空");
+				MessageBox("SN长度异常");
 #endif
 				#endif
 				m_strEdit1 = "";
